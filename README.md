@@ -1,7 +1,7 @@
 # Parallax Labs Internship — RAG Knowledge Extraction System
 
 ## Project Overview
-This project builds a Retrieval-Augmented Generation (RAG) system that answers questions using a large collection of real-world documents. The system ingests Wikipedia articles, cleans them, chunks them, and generates embeddings for retrieval.
+This project builds a Retrieval-Augmented Generation (RAG) system that answers questions using a large collection of real-world documents. The system ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, and retrieves relevant chunks using semantic search.
 
 ## Week 1 — Environment & Data Acquisition
 - Verification script testing all five required libraries
@@ -17,23 +17,27 @@ This project builds a Retrieval-Augmented Generation (RAG) system that answers q
 
 ## Week 3 — Chunking & Embeddings
 - Text chunking using recursive character splitting (500 characters per chunk)
-- Unit tests for the chunking function covering edge cases (very short text, text without clear sentence boundaries)
-- Embeddings generated using sentence-transformers (all-MiniLM-L6-v2) on real cleaned articles
-- Embedding generation time logged per chunk, with total expected indexing time calculated
+- Unit tests for the chunking function covering edge cases
+- Embeddings generated using sentence-transformers (all-MiniLM-L6-v2)
+- Embedding generation time logged per chunk
+
+## Week 4 — Vector Database (ChromaDB)
+- ChromaDB set up and configured locally
+- Chunks and their embeddings ingested into a ChromaDB collection
+- Basic semantic search implemented to retrieve the top-K chunks for a query
+- Retrieval latency tested and logged for 10 different queries
+- Edge cases handled: querying an empty database and empty/malformed queries
 
 ## Chunking Strategy Decision
-I chose recursive character splitting (fixed 500-character chunks) because it is simple, reliable, and works well for a first version. Semantic chunking was considered but not used, as it is more complex and not needed at this stage. Fixed-size chunks are easy to test and give predictable results.
+I chose recursive character splitting (fixed 500-character chunks) because it is simple, reliable, and works well for a first version. Semantic chunking was considered but not used, as it is more complex and not needed at this stage.
 
 ## Model Choice
-I chose all-MiniLM-L6-v2 because it is fast, lightweight, and runs easily on a normal laptop. It produces 384-dimensional embeddings, which are compact but effective for semantic search. It is a well-established, widely-used model, making it a safe and reliable choice.
+I chose all-MiniLM-L6-v2 because it is fast, lightweight, and runs easily on a normal laptop. It produces 384-dimensional embeddings, which are compact but effective for semantic search.
 
 ## Performance Logs
-Embeddings were generated on a subset of 50 real articles from the cleaned dataset:
 - Chunks from 50 articles: 607
 - Embedding dimension: 384
-- Time per chunk: ~0.029 seconds
-- Estimated total chunks for full dataset (4,961 articles): 60,226
-- Estimated total embedding time: ~1,746 seconds (approximately 29 minutes)
+- Average retrieval time per query: ~0.0023 seconds (tested on 10 queries)
 
 ## Files
 | File | Description |
@@ -46,8 +50,11 @@ Embeddings were generated on a subset of 50 real articles from the cleaned datas
 | `nlp_analysis.py` | spaCy tokenization and lemmatization |
 | `chunk.py` | Text chunking function |
 | `test_chunk.py` | Unit tests for the chunking function |
-| `embed.py` | Generates embeddings on real data and logs performance |
+| `embed.py` | Generates embeddings and logs performance |
 | `test_embed.py` | Unit test for embedding generation |
+| `vector_db.py` | Sets up ChromaDB, ingests chunks, and runs semantic search |
+| `test_search.py` | Tests retrieval latency for 10 queries |
+| `edge_cases.py` | Handles ChromaDB edge cases |
 
 ## Dependencies
 - Python 3.13
@@ -56,7 +63,6 @@ Embeddings were generated on a subset of 50 real articles from the cleaned datas
 ## How to Run
 
 1. Activate the virtual environment:
-
 venv\Scripts\activate
 
 
@@ -100,5 +106,20 @@ python embed.py
 python test_embed.py
 
 
+10. Set up the vector database and run semantic search:
+
+python vector_db.py
+
+
+11. Test retrieval latency:
+
+python test_search.py
+
+
+12. Test edge cases:
+
+python edge_cases.py
+
+
 ## Notes
-Data collection takes 1–2 hours as each article is fetched individually from the Wikipedia API. Skipped articles due to connection errors are expected and handled gracefully.
+Data collection takes 1–2 hours as each article is fetched individually from the Wikipedia API. Skipped articles due to connection errors are expected and handled gracefully

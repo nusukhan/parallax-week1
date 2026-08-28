@@ -1,7 +1,7 @@
 # Parallax Labs Internship — RAG Knowledge Extraction System
 
 ## Project Overview
-This project builds a Retrieval-Augmented Generation (RAG) system that answers questions using a large collection of real-world documents. The system ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, retrieves relevant chunks using semantic search, and evaluates retrieval quality.
+This project builds a complete Retrieval-Augmented Generation (RAG) system that answers questions using a large collection of real-world documents. The system ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, retrieves relevant chunks using semantic search, evaluates retrieval quality, and finally uses an LLM to generate answers — all through a simple command-line chat interface.
 
 ## Week 1 — Environment & Data Acquisition
 - Verification script testing all five required libraries
@@ -35,7 +35,14 @@ This project builds a Retrieval-Augmented Generation (RAG) system that answers q
 - Evaluation results documented and the best configuration identified
 - Retrieval logic refined to use the best configuration (chunk size 700, K = 5)
 
-## Evaluation Results
+## Week 6 — LLM Integration & Prompt Engineering
+- Integrated the OpenRouter API to generate answers from retrieved chunks
+- Applied prompt engineering: a system prompt (role + rules), context injection (retrieved chunks), and clear instructions
+- Robust error handling for API calls: rate limits, network timeouts, and malformed/empty responses
+- End-to-end latency measured and logged (retrieval + generation)
+- Simple command-line (CLI) chat interface to interact with the RAG system
+
+## Evaluation Results (Week 5)
 The retrieval system was evaluated on 20 queries using Precision@K and Recall@K.
 Different chunk sizes and K values were tested:
 
@@ -54,13 +61,21 @@ Different chunk sizes and K values were tested:
 - **Best configuration:** Chunk size 700 with K = 5 gave the best results (Precision 0.70, Recall 0.95).
 
 ## System Optimization
-Based on the evaluation findings, the retrieval logic in `vector_db.py` was updated to use the best configuration found: chunk size 700 and K = 5. This improves recall while keeping precision stable.
+Based on the evaluation findings, the retrieval logic was updated to use the best configuration found: chunk size 700 and K = 5.
 
-## Chunking Strategy Decision
-I chose recursive character splitting because it is simple, reliable, and easy to test. After evaluation, a chunk size of 700 characters was found to give the best retrieval performance.
+## RAG System Design (Week 6)
+The final system combines retrieval and generation:
+1. **Retrieval:** the user's question is embedded and the top 5 chunks are retrieved from ChromaDB.
+2. **Context building:** the retrieved chunks are joined into a single context block.
+3. **Prompt engineering:** a system prompt instructs the LLM to answer using only the provided context, and to say it does not know if the answer is missing.
+4. **Generation:** the prompt is sent to the LLM via the OpenRouter API, which returns a clear answer.
+5. **Latency logging:** the total time for retrieval + generation is measured for each question.
 
-## Model Choice
-I chose all-MiniLM-L6-v2 because it is fast, lightweight, and runs easily on a normal laptop. It produces 384-dimensional embeddings, which are compact but effective for semantic search.
+Generation (the LLM call over the network) takes most of the end-to-end time, while retrieval is very fast (a fraction of a second).
+
+## Model Choices
+- **Embedding model:** all-MiniLM-L6-v2 — fast, lightweight, produces 384-dimensional embeddings, effective for semantic search.
+- **LLM:** accessed through the OpenRouter API, which provides an OpenAI-compatible way to call a language model for answer generation.
 
 ## Files
 | File | Description |
@@ -75,14 +90,21 @@ I chose all-MiniLM-L6-v2 because it is fast, lightweight, and runs easily on a n
 | `test_chunk.py` | Unit tests for the chunking function |
 | `embed.py` | Generates embeddings and logs performance |
 | `test_embed.py` | Unit test for embedding generation |
-| `vector_db.py` | Sets up ChromaDB, ingests chunks, and runs semantic search (uses best settings: chunk size 700, K=5) |
+| `vector_db.py` | Sets up ChromaDB, ingests chunks, and runs semantic search (best settings: chunk size 700, K=5) |
 | `test_search.py` | Tests retrieval latency for 10 queries |
 | `edge_cases.py` | Handles ChromaDB edge cases |
 | `evaluate.py` | Evaluates retrieval with Precision@K and Recall@K, and experiments with chunk sizes and K values |
+| `rag.py` | Complete RAG system with LLM integration, error handling, latency logging, and a CLI chat interface |
 
 ## Dependencies
 - Python 3.13
-- wikipedia-api, pandas, spacy, nltk, sentence-transformers, chromadb
+- wikipedia-api, pandas, spacy, nltk, sentence-transformers, chromadb, openai
+
+## Setup: API Key
+The RAG system uses the OpenRouter API. To run `rag.py`, you need a free OpenRouter API key:
+1. Sign up at openrouter.ai
+2. Create an API key
+3. Paste it into the `api_key` field in `rag.py`
 
 ## How to Run
 
@@ -106,7 +128,6 @@ python check.py
 
 
 5. Clean the dataset:
-
 python clean.py
 
 
@@ -126,7 +147,6 @@ python embed.py
 
 
 9. Run the embedding test:
-
 python test_embed.py
 
 
@@ -150,5 +170,10 @@ python edge_cases.py
 python evaluate.py
 
 
+14. Run the full RAG system (CLI chat):
+
+python rag.py
+
+
 ## Notes
-Data collection takes 1–2 hours as each article is fetched individually from the Wikipedia API. Skipped articles due to connection errors are expected and handled gracefully.
+Data collection takes 1–2 hours as each article is fetched individually from the Wikipedia API. Skipped articles due to connection errors are expected and handled gracefully. The LLM call in the RAG system runs over the network, so generation latency depends on the API and model speed.

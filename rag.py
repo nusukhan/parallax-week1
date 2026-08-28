@@ -71,8 +71,8 @@ print()
 # ---------- STEP B: Set up the LLM connection (OpenRouter) ----------
 # base_url points to OpenRouter; api_key is our private key.
 llm_client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-       api_key="PASTE_YOUR_KEY_HERE"
+        base_url="https://openrouter.ai/api/v1",
+    api_key="PASTE_YOUR_KEY_HERE"
 )
 
 # ============================================================

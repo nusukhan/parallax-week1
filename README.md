@@ -1,7 +1,7 @@
 # Parallax Labs Internship — RAG Knowledge Extraction System
 
 ## Project Overview
-This project builds a complete Retrieval-Augmented Generation (RAG) system that answers questions using a large collection of real-world documents. The system ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, retrieves relevant chunks using semantic search, evaluates retrieval quality, and finally uses an LLM to generate answers — all through a simple command-line chat interface.
+This project builds a complete, hallucination-resistant Retrieval-Augmented Generation (RAG) system that answers questions using a large collection of real-world documents. The system ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, retrieves relevant chunks using semantic search, evaluates retrieval quality, generates answers with an LLM, checks those answers against the sources, and returns a structured output with citations.
 
 ## Week 1 — Environment & Data Acquisition
 - Verification script testing all five required libraries
@@ -37,14 +37,32 @@ This project builds a complete Retrieval-Augmented Generation (RAG) system that 
 
 ## Week 6 — LLM Integration & Prompt Engineering
 - Integrated the OpenRouter API to generate answers from retrieved chunks
-- Applied prompt engineering: a system prompt (role + rules), context injection (retrieved chunks), and clear instructions
+- Applied prompt engineering: system prompt, context injection, and clear instructions
 - Robust error handling for API calls: rate limits, network timeouts, and malformed/empty responses
 - End-to-end latency measured and logged (retrieval + generation)
 - Simple command-line (CLI) chat interface to interact with the RAG system
 
+## Week 7 — Hallucination Mitigation & Structured Output
+- Hallucination check: the generated answer is compared against the source chunks, and a support score is calculated (the fraction of answer words found in the sources)
+- Stronger prompt engineering: the model is explicitly told to use only the context, avoid outside knowledge, and reply "I don't know based on the provided documents" if the answer is missing
+- Off-topic (out-of-domain) queries are correctly refused instead of answered
+- Structured JSON output including the question, answer, hallucination check, support score, source citations, and latency
+
+## Hallucination Mitigation Strategies & Effectiveness
+Several strategies were combined to make the system hallucination-resistant:
+
+1. **Strong prompt engineering:** The system prompt instructs the LLM to answer using only the provided context, to not use outside knowledge, and to explicitly say "I don't know based on the provided documents" when the answer is missing.
+2. **Answer-vs-source check:** After generation, the answer is compared word-by-word against the retrieved chunks to produce a support score. A low score flags a possibly unsupported (hallucinated) answer.
+3. **Refusal detection:** When the model correctly refuses (says it doesn't know), this is recognized as correct behaviour rather than flagged as a hallucination.
+4. **Source citations:** Each answer is returned with previews of the source chunks it was based on, so the answer can be verified.
+
+**Observed effectiveness:**
+- For an in-domain question like "what is physics", the answer was well grounded, with a support score around 0.74–0.84 and a "Supported" status.
+- For an off-topic question like "how to make biryani", the system correctly replied "I don't know based on the provided documents" and was marked as a correct refusal.
+- The stronger prompt noticeably increased the support score compared to the earlier version, meaning answers stayed closer to the source documents.
+
 ## Evaluation Results (Week 5)
-The retrieval system was evaluated on 20 queries using Precision@K and Recall@K.
-Different chunk sizes and K values were tested:
+The retrieval system was evaluated on 20 queries using Precision@K and Recall@K:
 
 | Chunk Size | K | Precision | Recall |
 |------------|---|-----------|--------|
@@ -55,27 +73,11 @@ Different chunk sizes and K values were tested:
 | 700 | 3 | 0.70 | 0.90 |
 | 700 | 5 | 0.70 | 0.95 |
 
-## Impact of Hyperparameter Changes
-- **Chunk size:** Larger chunks (700 characters) produced better recall, because each chunk holds more context and is more likely to contain the answer. Smaller chunks (300) created more total chunks but did not improve recall.
-- **K value:** A higher K (5) increased recall, since checking more chunks gives more chances to find a correct one.
-- **Best configuration:** Chunk size 700 with K = 5 gave the best results (Precision 0.70, Recall 0.95).
-
-## System Optimization
-Based on the evaluation findings, the retrieval logic was updated to use the best configuration found: chunk size 700 and K = 5.
-
-## RAG System Design (Week 6)
-The final system combines retrieval and generation:
-1. **Retrieval:** the user's question is embedded and the top 5 chunks are retrieved from ChromaDB.
-2. **Context building:** the retrieved chunks are joined into a single context block.
-3. **Prompt engineering:** a system prompt instructs the LLM to answer using only the provided context, and to say it does not know if the answer is missing.
-4. **Generation:** the prompt is sent to the LLM via the OpenRouter API, which returns a clear answer.
-5. **Latency logging:** the total time for retrieval + generation is measured for each question.
-
-Generation (the LLM call over the network) takes most of the end-to-end time, while retrieval is very fast (a fraction of a second).
+Best configuration: chunk size 700 with K = 5.
 
 ## Model Choices
 - **Embedding model:** all-MiniLM-L6-v2 — fast, lightweight, produces 384-dimensional embeddings, effective for semantic search.
-- **LLM:** accessed through the OpenRouter API, which provides an OpenAI-compatible way to call a language model for answer generation.
+- **LLM:** accessed through the OpenRouter API for answer generation.
 
 ## Files
 | File | Description |
@@ -94,17 +96,18 @@ Generation (the LLM call over the network) takes most of the end-to-end time, wh
 | `test_search.py` | Tests retrieval latency for 10 queries |
 | `edge_cases.py` | Handles ChromaDB edge cases |
 | `evaluate.py` | Evaluates retrieval with Precision@K and Recall@K, and experiments with chunk sizes and K values |
-| `rag.py` | Complete RAG system with LLM integration, error handling, latency logging, and a CLI chat interface |
+| `rag.py` | RAG system with LLM integration, error handling, latency logging, and a CLI (Week 6) |
+| `rag_v2.py` | Hallucination-resistant RAG: answer-vs-source check, stronger prompt, off-topic refusal, and structured JSON output with citations (Week 7) |
 
 ## Dependencies
 - Python 3.13
 - wikipedia-api, pandas, spacy, nltk, sentence-transformers, chromadb, openai
 
 ## Setup: API Key
-The RAG system uses the OpenRouter API. To run `rag.py`, you need a free OpenRouter API key:
+The RAG system uses the OpenRouter API. To run `rag.py` or `rag_v2.py`, you need a free OpenRouter API key:
 1. Sign up at openrouter.ai
 2. Create an API key
-3. Paste it into the `api_key` field in `rag.py`
+3. Paste it into the `api_key` field in the file
 
 ## How to Run
 
@@ -128,6 +131,7 @@ python check.py
 
 
 5. Clean the dataset:
+
 python clean.py
 
 
@@ -147,6 +151,7 @@ python embed.py
 
 
 9. Run the embedding test:
+
 python test_embed.py
 
 
@@ -170,10 +175,15 @@ python edge_cases.py
 python evaluate.py
 
 
-14. Run the full RAG system (CLI chat):
+14. Run the Week 6 RAG system (CLI chat):
 
 python rag.py
 
 
+15. Run the Week 7 hallucination-resistant RAG (CLI chat with JSON output):
+
+python rag_v2.py
+
+
 ## Notes
-Data collection takes 1–2 hours as each article is fetched individually from the Wikipedia API. Skipped articles due to connection errors are expected and handled gracefully. The LLM call in the RAG system runs over the network, so generation latency depends on the API and model speed.
+Data collection takes 1–2 hours as each article is fetched individually from the Wikipedia API. Skipped articles due to connection errors are expected and handled gracefully. The LLM call runs over the network, so generation latency depends on the API and model speed.

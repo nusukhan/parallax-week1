@@ -1,69 +1,49 @@
 # Parallax Labs Internship — RAG Knowledge Extraction System
 
 ## Project Overview
-This project builds a complete, hallucination-resistant Retrieval-Augmented Generation (RAG) system that answers questions using a large collection of real-world documents. The system ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, retrieves relevant chunks using semantic search, evaluates retrieval quality, generates answers with an LLM, checks those answers against the sources, and returns a structured output with citations.
+This project builds a complete, hallucination-resistant Retrieval-Augmented Generation (RAG) system with topic modeling and NLP metadata enrichment. It ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, retrieves relevant chunks with semantic search, evaluates retrieval, generates grounded answers with an LLM, checks answers against sources, discovers topics, extracts named entities, and supports entity-based retrieval boosting.
 
 ## Week 1 — Environment & Data Acquisition
 - Verification script testing all five required libraries
 - Automated pipeline collecting 5,000 Wikipedia articles
-- Data validation and quality report (with encoding checks)
+- Data validation and quality report
 
 ## Week 2 — Data Cleaning & Preprocessing
-- Text cleaning functions: HTML removal, special characters, whitespace
-- Edge-case handling: empty, very short, extremely long, mixed-language text
-- spaCy tokenization and lemmatization on a subset
-- Unit tests for all cleaning functions
-- Cleaned dataset with dropped-data percentage logged
+- Text cleaning, edge-case handling, spaCy tokenization/lemmatization, unit tests
 
 ## Week 3 — Chunking & Embeddings
-- Text chunking using recursive character splitting (500 characters per chunk)
-- Unit tests for the chunking function covering edge cases
-- Embeddings generated using sentence-transformers (all-MiniLM-L6-v2)
-- Embedding generation time logged per chunk
+- 500-character chunking, unit tests, embeddings (all-MiniLM-L6-v2), timing logs
 
 ## Week 4 — Vector Database (ChromaDB)
-- ChromaDB set up and configured locally
-- Chunks and their embeddings ingested into a ChromaDB collection
-- Basic semantic search implemented to retrieve the top-K chunks for a query
-- Retrieval latency tested and logged for 10 different queries
-- Edge cases handled: querying an empty database and empty/malformed queries
+- ChromaDB setup, chunk ingestion, semantic search, latency tests, edge cases
 
 ## Week 5 — Retrieval Evaluation & Optimization
-- Manual test set of 20 queries created, each with an expected ground-truth keyword
-- Retrieval evaluation script calculating Precision@K and Recall@K
-- Experiments run across different chunk sizes (300, 500, 700) and K values (3, 5)
-- Evaluation results documented and the best configuration identified
-- Retrieval logic refined to use the best configuration (chunk size 700, K = 5)
+- 20-query test set, Precision@K / Recall@K, chunk-size and K experiments (best: 700, K=5)
 
 ## Week 6 — LLM Integration & Prompt Engineering
-- Integrated the OpenRouter API to generate answers from retrieved chunks
-- Applied prompt engineering: system prompt, context injection, and clear instructions
-- Robust error handling for API calls: rate limits, network timeouts, and malformed/empty responses
-- End-to-end latency measured and logged (retrieval + generation)
-- Simple command-line (CLI) chat interface to interact with the RAG system
+- OpenRouter API, prompt engineering, API error handling, latency logging, CLI
 
 ## Week 7 — Hallucination Mitigation & Structured Output
-- Hallucination check: the generated answer is compared against the source chunks, and a support score is calculated (the fraction of answer words found in the sources)
-- Stronger prompt engineering: the model is explicitly told to use only the context, avoid outside knowledge, and reply "I don't know based on the provided documents" if the answer is missing
-- Off-topic (out-of-domain) queries are correctly refused instead of answered
-- Structured JSON output including the question, answer, hallucination check, support score, source citations, and latency
+- Hallucination check, stronger prompt, off-topic refusal, JSON output with citations
 
-## Hallucination Mitigation Strategies & Effectiveness
-Several strategies were combined to make the system hallucination-resistant:
+## Week 8 — NLP Analysis: Topic Modeling
+- LDA topic modeling, bar-chart visualization, manual validation, edge-case handling, topic-filtered retrieval
 
-1. **Strong prompt engineering:** The system prompt instructs the LLM to answer using only the provided context, to not use outside knowledge, and to explicitly say "I don't know based on the provided documents" when the answer is missing.
-2. **Answer-vs-source check:** After generation, the answer is compared word-by-word against the retrieved chunks to produce a support score. A low score flags a possibly unsupported (hallucinated) answer.
-3. **Refusal detection:** When the model correctly refuses (says it doesn't know), this is recognized as correct behaviour rather than flagged as a hallucination.
-4. **Source citations:** Each answer is returned with previews of the source chunks it was based on, so the answer can be verified.
+## Week 9 — NLP Analysis: Named Entity Recognition (NER)
+- Named Entity Recognition using spaCy to extract people, places, dates, and organizations from the corpus
+- Evaluation of NER on 50 samples (detection rate measured)
+- Entities extracted per chunk and stored as metadata (entity_metadata.json and in ChromaDB)
+- Retrieval boosting: chunks containing a searched entity are ranked higher
+- Accuracy and usefulness of the entity metadata documented below
 
-**Observed effectiveness:**
-- For an in-domain question like "what is physics", the answer was well grounded, with a support score around 0.74–0.84 and a "Supported" status.
-- For an off-topic question like "how to make biryani", the system correctly replied "I don't know based on the provided documents" and was marked as a correct refusal.
-- The stronger prompt noticeably increased the support score compared to the earlier version, meaning answers stayed closer to the source documents.
+## NER Details (Week 9)
+Named Entity Recognition was performed with spaCy's `en_core_web_sm` model. For each article, spaCy identifies entities such as PERSON (e.g. "Isaac Newton", "Albert Einstein"), GPE/LOC (places like "Germany", "Earth"), DATE (e.g. "1905"), and ORG (organizations).
+
+**Accuracy:** On a sample of 50 articles, 50/50 produced usable entities (a 1.0 detection rate). Spot-checking showed most entities were correct, though NER is not perfect — for example, some tokens like "Earthsystem" were mislabeled as PERSON. This is a known limitation of general-purpose NER on technical text.
+
+**Usefulness:** The extracted entities are stored as metadata alongside each chunk in ChromaDB. This enables entity-based retrieval boosting: when a user searches for a specific entity (e.g. "Einstein"), chunks that mention that entity are ranked higher. In testing, a search for "what did Einstein discover" correctly boosted all Einstein-related chunks to the top.
 
 ## Evaluation Results (Week 5)
-The retrieval system was evaluated on 20 queries using Precision@K and Recall@K:
-
 | Chunk Size | K | Precision | Recall |
 |------------|---|-----------|--------|
 | 300 | 3 | 0.717 | 0.85 |
@@ -76,114 +56,62 @@ The retrieval system was evaluated on 20 queries using Precision@K and Recall@K:
 Best configuration: chunk size 700 with K = 5.
 
 ## Model Choices
-- **Embedding model:** all-MiniLM-L6-v2 — fast, lightweight, produces 384-dimensional embeddings, effective for semantic search.
-- **LLM:** accessed through the OpenRouter API for answer generation.
+- **Embedding model:** all-MiniLM-L6-v2 (384-dimensional embeddings)
+- **LLM:** OpenRouter API for answer generation
+- **Topic model:** LDA (scikit-learn)
+- **NER:** spaCy en_core_web_sm
 
 ## Files
 | File | Description |
 |------|-------------|
 | `verify.py` | Verifies all five libraries |
-| `data.py` | Collects and downloads Wikipedia articles |
-| `check.py` | Validates the dataset and generates the quality report |
-| `clean.py` | Cleaning functions and edge-case handling |
-| `test_clean.py` | Unit tests for cleaning functions |
+| `data.py` | Collects Wikipedia articles |
+| `check.py` | Validates the dataset |
+| `clean.py` | Cleaning functions and edge cases |
+| `test_clean.py` | Unit tests for cleaning |
 | `nlp_analysis.py` | spaCy tokenization and lemmatization |
 | `chunk.py` | Text chunking function |
-| `test_chunk.py` | Unit tests for the chunking function |
+| `test_chunk.py` | Unit tests for chunking |
 | `embed.py` | Generates embeddings and logs performance |
 | `test_embed.py` | Unit test for embedding generation |
-| `vector_db.py` | Sets up ChromaDB, ingests chunks, and runs semantic search (best settings: chunk size 700, K=5) |
-| `test_search.py` | Tests retrieval latency for 10 queries |
-| `edge_cases.py` | Handles ChromaDB edge cases |
-| `evaluate.py` | Evaluates retrieval with Precision@K and Recall@K, and experiments with chunk sizes and K values |
-| `rag.py` | RAG system with LLM integration, error handling, latency logging, and a CLI (Week 6) |
-| `rag_v2.py` | Hallucination-resistant RAG: answer-vs-source check, stronger prompt, off-topic refusal, and structured JSON output with citations (Week 7) |
+| `vector_db.py` | ChromaDB setup and semantic search |
+| `test_search.py` | Retrieval latency tests |
+| `edge_cases.py` | ChromaDB edge cases |
+| `evaluate.py` | Precision@K and Recall@K evaluation |
+| `rag.py` | RAG with LLM, error handling, latency, CLI (Week 6) |
+| `rag_v2.py` | Hallucination-resistant RAG with JSON output (Week 7) |
+| `topic_model.py` | LDA topic modeling, visualization, validation (Week 8) |
+| `topic_filter.py` | Topic-filtered retrieval (Week 8) |
+| `ner_extract.py` | NER extraction, evaluation, and metadata saving (Week 9) |
+| `ner_rag.py` | Entity metadata in ChromaDB + entity-based retrieval boosting (Week 9) |
+| `topic_distribution.png` | Bar chart of documents per topic |
+| `topic_validation.txt` | 20 random documents per topic |
+| `entity_metadata.json` | Extracted entities per article |
 
 ## Dependencies
 - Python 3.13
-- wikipedia-api, pandas, spacy, nltk, sentence-transformers, chromadb, openai
+- wikipedia-api, pandas, spacy, nltk, sentence-transformers, chromadb, openai, scikit-learn, matplotlib
 
 ## Setup: API Key
-The RAG system uses the OpenRouter API. To run `rag.py` or `rag_v2.py`, you need a free OpenRouter API key:
-1. Sign up at openrouter.ai
-2. Create an API key
-3. Paste it into the `api_key` field in the file
+To run `rag.py` or `rag_v2.py`, get a free OpenRouter API key at openrouter.ai, create a key, and paste it into the `api_key` field in the file.
 
 ## How to Run
-
 1. Activate the virtual environment:
 venv\Scripts\activate
 
+2. Run NER extraction and evaluation:
 
-2. Verify the environment:
+python ner_extract.py
 
-python verify.py
+3. Run entity-based retrieval boosting:
 
+python ner_rag.py
 
-3. Collect the dataset:
-
-python data.py
-
-
-4. Validate the dataset:
-
-python check.py
-
-
-5. Clean the dataset:
-
-python clean.py
-
-
-6. Run the cleaning tests:
-
-python test_clean.py
-
-
-7. Run the chunking tests:
-
-python test_chunk.py
-
-
-8. Generate embeddings:
-
-python embed.py
-
-
-9. Run the embedding test:
-
-python test_embed.py
-
-
-10. Set up the vector database and run semantic search:
-
-python vector_db.py
-
-
-11. Test retrieval latency:
-
-python test_search.py
-
-
-12. Test edge cases:
-
-python edge_cases.py
-
-
-13. Run the retrieval evaluation:
-
-python evaluate.py
-
-
-14. Run the Week 6 RAG system (CLI chat):
-
-python rag.py
-
-
-15. Run the Week 7 hallucination-resistant RAG (CLI chat with JSON output):
+4. Run the hallucination-resistant RAG (CLI chat):
 
 python rag_v2.py
 
+Other scripts (Weeks 1–8) run the same way, e.g. `python topic_model.py`, `python vector_db.py`, `python evaluate.py`.
 
 ## Notes
-Data collection takes 1–2 hours as each article is fetched individually from the Wikipedia API. Skipped articles due to connection errors are expected and handled gracefully. The LLM call runs over the network, so generation latency depends on the API and model speed.
+NLP tasks run on a subset of the corpus for speed. Chunks are added to ChromaDB in batches due to its max batch size. The LLM call runs over the network, so generation latency depends on the API.

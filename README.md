@@ -1,47 +1,55 @@
 # Parallax Labs Internship — RAG Knowledge Extraction System
 
 ## Project Overview
-This project builds a complete, hallucination-resistant Retrieval-Augmented Generation (RAG) system with topic modeling and NLP metadata enrichment. It ingests Wikipedia articles, cleans them, chunks them, generates embeddings, stores them in a vector database, retrieves relevant chunks with semantic search, evaluates retrieval, generates grounded answers with an LLM, checks answers against sources, discovers topics, extracts named entities, and supports entity-based retrieval boosting.
+A complete, hallucination-resistant Retrieval-Augmented Generation (RAG) system with topic modeling, NLP metadata, and a FastAPI web service. It ingests Wikipedia articles, cleans, chunks, embeds, stores them in a vector database, retrieves with semantic search, evaluates retrieval, generates grounded answers with an LLM, checks answers against sources, discovers topics, extracts named entities, and exposes everything through a REST API.
 
 ## Week 1 — Environment & Data Acquisition
-- Verification script testing all five required libraries
-- Automated pipeline collecting 5,000 Wikipedia articles
-- Data validation and quality report
+- Library verification, 5,000-article Wikipedia pipeline, data validation
 
 ## Week 2 — Data Cleaning & Preprocessing
-- Text cleaning, edge-case handling, spaCy tokenization/lemmatization, unit tests
+- Text cleaning, edge cases, spaCy tokenization/lemmatization, unit tests
 
 ## Week 3 — Chunking & Embeddings
-- 500-character chunking, unit tests, embeddings (all-MiniLM-L6-v2), timing logs
+- 500-char chunking, unit tests, embeddings (all-MiniLM-L6-v2), timing logs
 
 ## Week 4 — Vector Database (ChromaDB)
-- ChromaDB setup, chunk ingestion, semantic search, latency tests, edge cases
+- ChromaDB setup, ingestion, semantic search, latency tests, edge cases
 
 ## Week 5 — Retrieval Evaluation & Optimization
 - 20-query test set, Precision@K / Recall@K, chunk-size and K experiments (best: 700, K=5)
 
 ## Week 6 — LLM Integration & Prompt Engineering
-- OpenRouter API, prompt engineering, API error handling, latency logging, CLI
+- OpenRouter API, prompt engineering, error handling, latency logging, CLI
 
 ## Week 7 — Hallucination Mitigation & Structured Output
 - Hallucination check, stronger prompt, off-topic refusal, JSON output with citations
 
 ## Week 8 — NLP Analysis: Topic Modeling
-- LDA topic modeling, bar-chart visualization, manual validation, edge-case handling, topic-filtered retrieval
+- LDA topic modeling, visualization, manual validation, edge cases, topic-filtered retrieval
 
-## Week 9 — NLP Analysis: Named Entity Recognition (NER)
-- Named Entity Recognition using spaCy to extract people, places, dates, and organizations from the corpus
-- Evaluation of NER on 50 samples (detection rate measured)
-- Entities extracted per chunk and stored as metadata (entity_metadata.json and in ChromaDB)
-- Retrieval boosting: chunks containing a searched entity are ranked higher
-- Accuracy and usefulness of the entity metadata documented below
+## Week 9 — NLP Analysis: Named Entity Recognition
+- spaCy NER, evaluation on 50 samples, entity metadata, entity-based retrieval boosting
 
-## NER Details (Week 9)
-Named Entity Recognition was performed with spaCy's `en_core_web_sm` model. For each article, spaCy identifies entities such as PERSON (e.g. "Isaac Newton", "Albert Einstein"), GPE/LOC (places like "Germany", "Earth"), DATE (e.g. "1905"), and ORG (organizations).
+## Week 10 — API Development (FastAPI)
+- The complete RAG system wrapped in a FastAPI application
+- Endpoints: `/query` (ask a question), `/metadata` (corpus info), `/health` (health check)
+- Request logging (query, chunks, answer, latency) to `api_log.txt`
+- Proper HTTP error responses: 400 (empty query), 422 (invalid body, automatic), 500 (internal errors)
+- Concurrent-request test confirming the API stays stable under load (5/5 requests succeeded)
 
-**Accuracy:** On a sample of 50 articles, 50/50 produced usable entities (a 1.0 detection rate). Spot-checking showed most entities were correct, though NER is not perfect — for example, some tokens like "Earthsystem" were mislabeled as PERSON. This is a known limitation of general-purpose NER on technical text.
+## API Details (Week 10)
+The RAG system is served with FastAPI and run using uvicorn. It builds the vector database once at startup, then reuses it for every request.
 
-**Usefulness:** The extracted entities are stored as metadata alongside each chunk in ChromaDB. This enables entity-based retrieval boosting: when a user searches for a specific entity (e.g. "Einstein"), chunks that mention that entity are ranked higher. In testing, a search for "what did Einstein discover" correctly boosted all Einstein-related chunks to the top.
+**Endpoints:**
+- `GET /health` — returns status and number of chunks in the database
+- `GET /metadata` — returns corpus info (articles used, total chunks, chunk size, K, embedding model)
+- `POST /query` — takes `{"question": "..."}` and returns the answer, hallucination check, support score, source previews, and latency
+
+**Logging:** Every query is logged to `api_log.txt` with a timestamp, the question, number of chunks, latency, and an answer preview.
+
+**Error handling:** 400 is returned for an empty question, 422 is returned automatically by FastAPI for a malformed request body, and 500 is returned if an internal error (e.g. LLM failure) occurs.
+
+**Stability:** A concurrent test (`test_api.py`) sends 5 requests at the same time using threads. All 5 returned status 200, confirming the API handles simultaneous requests without crashing.
 
 ## Evaluation Results (Week 5)
 | Chunk Size | K | Precision | Recall |
@@ -56,62 +64,51 @@ Named Entity Recognition was performed with spaCy's `en_core_web_sm` model. For 
 Best configuration: chunk size 700 with K = 5.
 
 ## Model Choices
-- **Embedding model:** all-MiniLM-L6-v2 (384-dimensional embeddings)
-- **LLM:** OpenRouter API for answer generation
+- **Embedding model:** all-MiniLM-L6-v2 (384-dim)
+- **LLM:** OpenRouter API
 - **Topic model:** LDA (scikit-learn)
 - **NER:** spaCy en_core_web_sm
+- **API framework:** FastAPI (served with uvicorn)
 
-## Files
+## Key Files
 | File | Description |
 |------|-------------|
-| `verify.py` | Verifies all five libraries |
-| `data.py` | Collects Wikipedia articles |
-| `check.py` | Validates the dataset |
-| `clean.py` | Cleaning functions and edge cases |
-| `test_clean.py` | Unit tests for cleaning |
-| `nlp_analysis.py` | spaCy tokenization and lemmatization |
-| `chunk.py` | Text chunking function |
-| `test_chunk.py` | Unit tests for chunking |
-| `embed.py` | Generates embeddings and logs performance |
-| `test_embed.py` | Unit test for embedding generation |
-| `vector_db.py` | ChromaDB setup and semantic search |
-| `test_search.py` | Retrieval latency tests |
-| `edge_cases.py` | ChromaDB edge cases |
-| `evaluate.py` | Precision@K and Recall@K evaluation |
-| `rag.py` | RAG with LLM, error handling, latency, CLI (Week 6) |
+| `data.py`, `check.py` | Data collection and validation |
+| `clean.py`, `test_clean.py`, `nlp_analysis.py` | Cleaning and NLP preprocessing |
+| `chunk.py`, `test_chunk.py`, `embed.py`, `test_embed.py` | Chunking and embeddings |
+| `vector_db.py`, `test_search.py`, `edge_cases.py` | Vector database and search |
+| `evaluate.py` | Precision@K / Recall@K evaluation |
+| `rag.py` | RAG with LLM, CLI (Week 6) |
 | `rag_v2.py` | Hallucination-resistant RAG with JSON output (Week 7) |
-| `topic_model.py` | LDA topic modeling, visualization, validation (Week 8) |
-| `topic_filter.py` | Topic-filtered retrieval (Week 8) |
-| `ner_extract.py` | NER extraction, evaluation, and metadata saving (Week 9) |
-| `ner_rag.py` | Entity metadata in ChromaDB + entity-based retrieval boosting (Week 9) |
-| `topic_distribution.png` | Bar chart of documents per topic |
-| `topic_validation.txt` | 20 random documents per topic |
-| `entity_metadata.json` | Extracted entities per article |
+| `topic_model.py`, `topic_filter.py` | Topic modeling and topic-filtered retrieval (Week 8) |
+| `ner_extract.py`, `ner_rag.py` | NER and entity-based boosting (Week 9) |
+| `api.py` | FastAPI web service (Week 10) |
+| `test_api.py` | Concurrent-request stability test (Week 10) |
 
 ## Dependencies
 - Python 3.13
-- wikipedia-api, pandas, spacy, nltk, sentence-transformers, chromadb, openai, scikit-learn, matplotlib
+- wikipedia-api, pandas, spacy, nltk, sentence-transformers, chromadb, openai, scikit-learn, matplotlib, fastapi, uvicorn, requests
 
 ## Setup: API Key
-To run `rag.py` or `rag_v2.py`, get a free OpenRouter API key at openrouter.ai, create a key, and paste it into the `api_key` field in the file.
+The system uses the OpenRouter API. Get a free key at openrouter.ai, create a key, and paste it into the `api_key` field in `api.py` (and `rag.py` / `rag_v2.py`).
 
-## How to Run
+## How to Run the API
 1. Activate the virtual environment:
+
 venv\Scripts\activate
 
-2. Run NER extraction and evaluation:
+2. Start the API server:
 
-python ner_extract.py
+uvicorn api:app --reload
 
-3. Run entity-based retrieval boosting:
+3. Open the interactive docs in a browser:
 
-python ner_rag.py
+http://127.0.0.1:8000/docs
 
-4. Run the hallucination-resistant RAG (CLI chat):
+4. In a second terminal, run the concurrent test:
 
-python rag_v2.py
+python test_api.py
 
-Other scripts (Weeks 1–8) run the same way, e.g. `python topic_model.py`, `python vector_db.py`, `python evaluate.py`.
 
 ## Notes
-NLP tasks run on a subset of the corpus for speed. Chunks are added to ChromaDB in batches due to its max batch size. The LLM call runs over the network, so generation latency depends on the API.
+The API builds the database on startup (first 50 articles for speed). The LLM call runs over the network, so latency depends on the API and model speed.

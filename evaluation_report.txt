@@ -1,0 +1,64 @@
+what is physics | retrieval: OK | answer: MISS | grounding: 0.0 | latency: 16.12s
+what is energy | retrieval: OK | answer: OK | grounding: 0.22 | latency: 5.23s
+what is an atom | retrieval: OK | answer: OK | grounding: 0.62 | latency: 3.92s
+what is light | retrieval: OK | answer: OK | grounding: 0.57 | latency: 2.18s
+how do stars form | retrieval: OK | answer: MISS | grounding: 0.0 | latency: 3.09s
+what is gravity | retrieval: OK | answer: OK | grounding: 0.77 | latency: 16.75s
+what is a wave | retrieval: OK | answer: OK | grounding: 0.33 | latency: 12.11s
+what is matter | retrieval: OK | answer: MISS | grounding: 0.0 | latency: 10.5s
+what is force | retrieval: OK | answer: OK | grounding: 0.45 | latency: 3.05s
+what is motion | retrieval: OK | answer: OK | grounding: 0.57 | latency: 15.6s
+what is heat | retrieval: OK | answer: OK | grounding: 0.58 | latency: 2.85s
+what is temperature | retrieval: OK | answer: OK | grounding: 0.65 | latency: 17.93s
+what is a particle | retrieval: OK | answer: OK | grounding: 0.69 | latency: 3.01s
+what is quantum mechanics | retrieval: OK | answer: OK | grounding: 0.74 | latency: 5.89s
+what is relativity | retrieval: OK | answer: OK | grounding: 0.77 | latency: 6.3s
+who was Albert Einstein | retrieval: OK | answer: OK | grounding: 0.44 | latency: 9.21s
+who was Isaac Newton | retrieval: OK | answer: OK | grounding: 0.57 | latency: 5.3s
+what is a magnetic field | retrieval: OK | answer: OK | grounding: 0.44 | latency: 20.92s
+what is electricity | retrieval: OK | answer: OK | grounding: 0.54 | latency: 4.45s
+what is a molecule | retrieval: OK | answer: OK | grounding: 0.76 | latency: 5.83s
+what is radiation | retrieval: OK | answer: MISS | grounding: 0.0 | latency: 4.03s
+what is nuclear physics | retrieval: OK | answer: MISS | grounding: 0.0 | latency: 2.81s
+what is thermodynamics | retrieval: OK | answer: OK | grounding: 0.89 | latency: 10.85s
+what is mass | retrieval: OK | answer: OK | grounding: 0.47 | latency: 5.99s
+what is velocity | retrieval: OK | answer: OK | grounding: 0.62 | latency: 3.77s
+what is a vector | retrieval: OK | answer: MISS | grounding: 0.0 | latency: 12.92s
+what is reflection of light | retrieval: MISS | answer: MISS | grounding: 0.0 | latency: 1.77s
+what is refraction | retrieval: OK | answer: OK | grounding: 0.42 | latency: 1.04s
+what is a spectrum | retrieval: OK | answer: MISS | grounding: 0.25 | latency: 1.63s
+what is classical mechanics | retrieval: OK | answer: MISS | grounding: 0.01 | latency: 1.77s
+
+============================================================
+END-TO-END EVALUATION REPORT (30 Q&A pairs)
+============================================================
+
+1. RETRIEVAL ACCURACY
+   Queries where a relevant chunk was retrieved: 29/30 (0.97)
+
+2. GENERATION QUALITY
+   Answers containing the expected keyword: 21/30 (0.7)
+   Average grounding score (answer vs sources): 0.41
+   Correct refusals ('I don't know'): 5
+
+3. LATENCY
+   Average end-to-end latency per query: 7.23 seconds
+   Total time for all queries: 216.85 seconds
+
+============================================================
+KNOWN LIMITATIONS OF THE CURRENT ARCHITECTURE
+============================================================
+- Only the first 50 articles are indexed, so questions about
+  topics outside this subset cannot be answered.
+- The grounding check is word-overlap based, not semantic, so a
+  correct paraphrase can score low and copied text can score high.
+- The database is rebuilt in memory on every startup; there is no
+  persistent vector store, which does not scale.
+- Chunking is fixed-size (700 chars) and can split sentences
+  mid-idea; semantic chunking would preserve meaning better.
+- The free LLM tier is rate-limited and occasionally returns
+  low-quality or off-format responses.
+- Generation dominates latency (a network call); retrieval itself
+  takes only milliseconds.
+- NER labels from the general-purpose spaCy model are imperfect on
+  technical text (e.g. 'Earthsystem' tagged as PERSON).
